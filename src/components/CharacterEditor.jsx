@@ -86,7 +86,7 @@ export default function CharacterEditor({ player, setScreen }) {
             bgId={equip.bgId || null}
             pose={activeChar?.pose || null}
             animation={activeChar?.animation || null}
-            size={180}
+            size={220}
           />
         </div>
       </div>

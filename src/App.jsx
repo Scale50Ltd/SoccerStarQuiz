@@ -198,22 +198,53 @@ export default function App() {
     setScreen('result')
   }
 
-  // Exchange per difficulty: type = 'points'|'stars'|'goldenStars', diff = 'leicht'|'mittel'|'schwer'
-  function handleExchange(type, amount, diff) {
-    const RATES = {
-      leicht: { points: 2, stars: 25, goldenStars: 50 },
-      mittel: { points: 5, stars: 40, goldenStars: 75 },
-      schwer: { points: 20, stars: 75, goldenStars: 200 },
-    }
-    const rate = (RATES[diff] || RATES.mittel)[type]
+  // Exchange: 10 points → 1 golden star (from a specific difficulty)
+  function handlePointsToGold(diff, amount) {
+    const pointsCost = amount * 10
+    setPlayer(prev => {
+      const byDiff = { ...(prev._byDifficulty || {}) }
+      const d = byDiff[diff] || { points: 0, stars: 0, goldenStars: 0 }
+      if (d.points < pointsCost) return prev
+      byDiff[diff] = { ...d, points: d.points - pointsCost, goldenStars: d.goldenStars + amount }
+      return {
+        ...prev,
+        points: prev.points - pointsCost,
+        goldenStars: prev.goldenStars + amount,
+        _byDifficulty: byDiff,
+      }
+    })
+  }
+
+  // Exchange: 2 normal stars → 1 golden star (from a specific difficulty)
+  function handleStarsToGold(diff, amount) {
+    const starsCost = amount * 2
+    setPlayer(prev => {
+      const byDiff = { ...(prev._byDifficulty || {}) }
+      const d = byDiff[diff] || { points: 0, stars: 0, goldenStars: 0 }
+      if (d.stars < starsCost) return prev
+      byDiff[diff] = { ...d, stars: d.stars - starsCost, goldenStars: d.goldenStars + amount }
+      return {
+        ...prev,
+        stars: prev.stars - starsCost,
+        goldenStars: prev.goldenStars + amount,
+        _byDifficulty: byDiff,
+      }
+    })
+  }
+
+  // Exchange: golden stars → coins (from a specific difficulty)
+  function handleGoldToCoins(diff, amount) {
+    const GOLD_RATES = { leicht: 50, mittel: 75, schwer: 200 }
+    const rate = GOLD_RATES[diff] || GOLD_RATES.mittel
     const coins = amount * rate
     setPlayer(prev => {
       const byDiff = { ...(prev._byDifficulty || {}) }
       const d = byDiff[diff] || { points: 0, stars: 0, goldenStars: 0 }
-      byDiff[diff] = { ...d, [type]: Math.max(0, d[type] - amount) }
+      if (d.goldenStars < amount) return prev
+      byDiff[diff] = { ...d, goldenStars: d.goldenStars - amount }
       return {
         ...prev,
-        [type]: prev[type] - amount,
+        goldenStars: prev.goldenStars - amount,
         coins: prev.coins + coins,
         _byDifficulty: byDiff,
       }
@@ -282,7 +313,7 @@ export default function App() {
           <ShopScreen player={player} onBuy={handleBuy} />
         )}
         {screen === 'exchange' && (
-          <ExchangeScreen player={player} onExchange={handleExchange} />
+          <ExchangeScreen player={player} onPointsToGold={handlePointsToGold} onStarsToGold={handleStarsToGold} onGoldToCoins={handleGoldToCoins} />
         )}
         {screen === 'equipment' && (
           <EquipmentScreen player={player} />

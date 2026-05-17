@@ -109,7 +109,7 @@ export default function MyCharacters({ setScreen }) {
                 </div>
               )}
               <div className="flex justify-center mb-2">
-                <FootballerSVG {...char} size={70} />
+                <FootballerSVG {...char} size={100} />
               </div>
               <div className="text-sm font-bold text-gray-700 truncate">{char.name || `Spieler ${idx + 1}`}</div>
               <div className="flex gap-1 mt-2 justify-center">

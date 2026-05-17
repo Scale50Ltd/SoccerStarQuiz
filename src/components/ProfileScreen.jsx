@@ -31,7 +31,7 @@ export default function ProfileScreen({ player, setScreen }) {
               bgId={equip.bgId || null}
               pose={activeChar?.pose || null}
               animation={activeChar?.animation || null}
-              size={160}
+              size={200}
             />
             <div className="text-center mt-2">
               <h2 className="text-2xl font-extrabold text-white drop-shadow">{player.name}</h2>

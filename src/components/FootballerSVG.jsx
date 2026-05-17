@@ -46,104 +46,157 @@ const BACKGROUNDS = {
   bg_finale: { sky: '#312e81', ground: '#15803d', type: 'finale' },
 }
 
-// Animation keyframes for each pose (angles oscillate between two states)
-// Format: { joint: [fromAngle, toAngle], duration (s) }
+// Animation keyframes for each pose
+// Each joint: [angle1, angle2] for simple oscillation, or [a1,a2,a3,...] for complex motion
+// dur = full cycle duration in seconds
 const ANIMATIONS = {
-  default: { // Idle breathing — arms visibly at sides
-    lShoulder: [12, 16], rShoulder: [-12, -16], lElbow: [8, 14], rElbow: [8, 14],
-    lHip: [0, 2], rHip: [0, -2], lKnee: [0, 0], rKnee: [0, 0], dur: 2.5
+  default: { // Idle — arms hang at sides (negative=outward for left, positive=outward for right)
+    lShoulder: [-10, -14, -10, -8], rShoulder: [10, 8, 10, 14],
+    lElbow: [3, 6, 8, 5], rElbow: [3, 8, 5, 6],
+    lHip: [0, 2, 0, -1], rHip: [0, -1, 0, 2],
+    lKnee: [0, 1, 0, 0], rKnee: [0, 0, 1, 0],
+    dur: 4.0
   },
-  jubel: { // Arms wave up/down — clearly visible
-    lShoulder: [-155, -170], rShoulder: [155, 170], lElbow: [-10, -25], rElbow: [-10, -25],
-    lHip: [0, 2], rHip: [0, -2], lKnee: [0, 0], rKnee: [0, 0], dur: 0.8
+  jubel: { // Arms wave up
+    lShoulder: [-155, -170, -155, -165], rShoulder: [155, 170, 155, 165],
+    lElbow: [-10, -25, -15, -25], rElbow: [-10, -25, -15, -25],
+    lHip: [0, 2, 0, -1], rHip: [0, -2, 0, 1],
+    lKnee: [0, 2, 0, 0], rKnee: [0, 0, 0, 2],
+    dur: 1.2
   },
-  sprint: { // Running cycle: arms and legs alternate
-    lShoulder: [-25, 15], rShoulder: [25, -15], lElbow: [20, 35], rElbow: [20, 35],
-    lHip: [22, -12], rHip: [-14, 22], lKnee: [-5, 15], rKnee: [18, -5], dur: 0.7
+  sprint: { // Running cycle — arms swing forward/back
+    lShoulder: [-25, 15], rShoulder: [25, -15],
+    lElbow: [20, 35], rElbow: [20, 35],
+    lHip: [22, -12], rHip: [-14, 22],
+    lKnee: [-5, 15], rKnee: [18, -5],
+    dur: 0.7
   },
-  jonglieren: { // Knee bounce with ball
-    lShoulder: [6, 10], rShoulder: [-6, -10], lElbow: [8, 12], rElbow: [8, 12],
-    lHip: [0, 2], rHip: [-28, -38], lKnee: [0, 0], rKnee: [35, 50], dur: 0.8
+  jonglieren: { // Knee bounce — arms slightly out for balance
+    lShoulder: [-8, -12, -10, -8], rShoulder: [8, 12, 10, 8],
+    lElbow: [6, 10, 8, 6], rElbow: [6, 8, 10, 6],
+    lHip: [0, 2, 0, -1], rHip: [-28, -38, -30, -38],
+    lKnee: [0, 0, 0, 0], rKnee: [35, 50, 40, 50],
+    dur: 1.0
   },
-  sprung: { // Jump: legs bend then extend
-    lShoulder: [-30, -40], rShoulder: [30, 40], lElbow: [-8, -15], rElbow: [-8, -15],
-    lHip: [10, 18], rHip: [10, 18], lKnee: [-10, -18], rKnee: [-10, -18], dur: 1.0
+  sprung: { // Jump — arms go up
+    lShoulder: [-30, -40, -35, -40], rShoulder: [30, 40, 35, 40],
+    lElbow: [-8, -15, -10, -15], rElbow: [-8, -15, -10, -15],
+    lHip: [10, 18, 12, 18], rHip: [10, 18, 12, 18],
+    lKnee: [-10, -18, -12, -18], rKnee: [-10, -18, -12, -18],
+    dur: 1.2
   },
-  torwart: { // Ready stance: sway side to side
-    lShoulder: [-50, -55], rShoulder: [50, 55], lElbow: [18, 25], rElbow: [18, 25],
-    lHip: [-6, -4], rHip: [6, 4], lKnee: [3, 5], rKnee: [3, 5], dur: 1.2
+  torwart: { // Ready stance — arms out wide
+    lShoulder: [-50, -55, -48, -55], rShoulder: [50, 55, 48, 55],
+    lElbow: [18, 25, 20, 25], rElbow: [18, 25, 20, 25],
+    lHip: [-6, -4, -5, -4], rHip: [6, 4, 5, 4],
+    lKnee: [3, 5, 4, 5], rKnee: [3, 5, 4, 5],
+    dur: 1.4
   },
-  dribbling: { // Ball control: weight shift
-    lShoulder: [8, 14], rShoulder: [-5, -10], lElbow: [10, 15], rElbow: [10, 15],
-    lHip: [-3, 2], rHip: [6, 12], lKnee: [0, 0], rKnee: [-4, -8], dur: 0.9
+  dribbling: { // Ball control — arms out for balance
+    lShoulder: [-8, -14, -10, -14], rShoulder: [6, 12, 8, 12],
+    lElbow: [6, 10, 8, 10], rElbow: [6, 10, 8, 10],
+    lHip: [-3, 2, 0, 2], rHip: [6, 12, 8, 12],
+    lKnee: [0, 0, 0, 0], rKnee: [-4, -8, -5, -8],
+    dur: 1.1
   },
-  cool: { // Cool lean: subtle sway
-    lShoulder: [18, 24], rShoulder: [-22, -28], lElbow: [22, 30], rElbow: [32, 38],
-    lHip: [2, 5], rHip: [-3, -6], lKnee: [0, 2], rKnee: [1, 3], dur: 2.0
+  cool: { // Cool lean — arms hang relaxed at sides
+    lShoulder: [-12, -16, -14, -18], rShoulder: [16, 20, 18, 22],
+    lElbow: [10, 16, 12, 18], rElbow: [14, 20, 16, 22],
+    lHip: [2, 5, 3, 5], rHip: [-3, -6, -4, -6],
+    lKnee: [0, 2, 1, 2], rKnee: [1, 3, 2, 3],
+    dur: 2.5
   },
-  kraft: { // Flex: arms pump
-    lShoulder: [-108, -118], rShoulder: [108, 118], lElbow: [-68, -78], rElbow: [-68, -78],
-    lHip: [1, 3], rHip: [-1, -3], lKnee: [0, 0], rKnee: [0, 0], dur: 0.9
+  kraft: { // Flex — arms up showing muscles
+    lShoulder: [-108, -118, -112, -118], rShoulder: [108, 118, 112, 118],
+    lElbow: [-68, -78, -72, -78], rElbow: [-68, -78, -72, -78],
+    lHip: [1, 3, 2, 3], rHip: [-1, -3, -2, -3],
+    lKnee: [0, 1, 0, 0], rKnee: [0, 0, 0, 1],
+    dur: 1.2
   },
-  fallrueck: { // Kick motion
-    lShoulder: [12, 18], rShoulder: [-8, -14], lElbow: [8, 14], rElbow: [10, 16],
-    lHip: [4, 8], rHip: [-28, -38], lKnee: [0, 5], rKnee: [22, 32], dur: 1.0
+  fallrueck: { // Kick — arms out for balance
+    lShoulder: [-10, -16, -12, -18], rShoulder: [8, 14, 10, 16],
+    lElbow: [6, 12, 8, 14], rElbow: [8, 14, 10, 16],
+    lHip: [4, 8, 5, 8], rHip: [-28, -38, -32, -38],
+    lKnee: [0, 5, 2, 5], rKnee: [22, 32, 26, 32],
+    dur: 1.2
   },
-  krone: { // Royal wave
-    lShoulder: [4, 8], rShoulder: [-148, -158], lElbow: [6, 10], rElbow: [-8, -15],
-    lHip: [0, 2], rHip: [0, -2], lKnee: [0, 0], rKnee: [0, 0], dur: 1.5
+  krone: { // Royal wave — left arm at side, right arm waves
+    lShoulder: [-6, -10, -8, -10], rShoulder: [-148, -158, -152, -158],
+    lElbow: [4, 8, 6, 8], rElbow: [-8, -15, -10, -18],
+    lHip: [0, 2, 1, 2], rHip: [0, -2, -1, -2],
+    lKnee: [0, 0, 0, 0], rKnee: [0, 0, 0, 0],
+    dur: 1.8
   },
-  handsfeet: { // Hands and feet active
-    lShoulder: [-38, -48], rShoulder: [38, 48], lElbow: [12, 20], rElbow: [12, 20],
-    lHip: [6, 12], rHip: [-6, -12], lKnee: [0, 0], rKnee: [0, 0], dur: 1.2
+  handsfeet: { // Hands and feet active — arms out wide
+    lShoulder: [-38, -48, -42, -48], rShoulder: [38, 48, 42, 48],
+    lElbow: [12, 20, 15, 20], rElbow: [12, 20, 15, 20],
+    lHip: [6, 12, 8, 12], rHip: [-6, -12, -8, -12],
+    lKnee: [0, 2, 0, 0], rKnee: [0, 0, 0, 2],
+    dur: 1.4
   },
 }
 
 const GROUND_Y = 72
 const CHAR_Y = GROUND_Y - 40
 
-// Animated joint: wraps children in a group with SVG animateTransform
-function AnimJoint({ from, to, dur, children }) {
-  const values = `${from};${to};${from}`
+// Animated joint: supports 2+ keyframes for varied, natural motion
+// Automatically appends first value at end for smooth looping
+function AnimJoint({ angles, dur, children }) {
+  // Make a smooth loop: add the first angle at the end so it cycles back
+  const looped = [...angles, angles[0]]
+  const vals = looped.join(';')
+  const n = looped.length
+  const keyTimes = looped.map((_, i) => (i / (n - 1)).toFixed(3)).join(';')
+  const splines = Array(n - 1).fill('0.4 0 0.6 1').join(';')
   return (
     <g>
       <animateTransform
         attributeName="transform"
         type="rotate"
-        values={values}
+        values={vals}
         dur={`${dur}s`}
         repeatCount="indefinite"
         calcMode="spline"
-        keySplines="0.4 0 0.6 1;0.4 0 0.6 1"
-        keyTimes="0;0.5;1"
+        keySplines={splines}
+        keyTimes={keyTimes}
       />
       {children}
     </g>
   )
 }
 
-function Arm({ fromShoulder, toShoulder, fromElbow, toElbow, dur, trikotColor, skinColor }) {
+function Arm({ shoulderAngles, elbowAngles, dur, trikotColor, skinColor }) {
   return (
-    <AnimJoint from={fromShoulder} to={toShoulder} dur={dur}>
-      <path d="M-3.5,0 L-3.5,14 Q0,15.5 3.5,14 L3.5,0 Z" fill={trikotColor} />
+    <AnimJoint angles={shoulderAngles} dur={dur}>
+      {/* Small shoulder cap — subtle round joint */}
+      <ellipse cx="0" cy="0" rx="4" ry="2.5" fill={trikotColor} />
+      {/* Upper arm (sleeve) — tapered with curves */}
+      <path d="M-3.8,1 Q-4,7 -3.5,14 Q0,15.5 3.5,14 Q4,7 3.8,1 Z" fill={trikotColor} />
+      {/* Elbow joint — small round connector */}
       <g transform="translate(0, 14)">
-        <AnimJoint from={fromElbow} to={toElbow} dur={dur * 0.8}>
-          <path d="M-2.8,0 L-2.5,11 Q0,12.5 2.5,11 L2.8,0 Z" fill={skinColor} />
+        <ellipse cx="0" cy="0" rx="3" ry="2" fill={skinColor} />
+        <AnimJoint angles={elbowAngles} dur={dur * 0.8}>
+          {/* Forearm — tapered with curves */}
+          <path d="M-2.8,0 Q-3,5.5 -2.5,11 Q0,12 2.5,11 Q3,5.5 2.8,0 Z" fill={skinColor} />
           {/* Subtle arm shading */}
-          <path d="M-2.8,0 L-2.5,11 Q0,12.5 0,11 L0,0 Z" fill="rgba(0,0,0,0.05)" />
-          {/* Hand with fingers */}
-          <g transform="translate(0, 12)">
-            <path d="M-2.5,0 Q-3,1.5 -2.5,3 Q-1.5,4.5 0,4.5 Q1.5,4.5 2.5,3 Q3,1.5 2.5,0 Z" fill={skinColor} />
-            {/* Finger lines */}
-            <path d="M-1.5,3 L-1.5,5.5" fill="none" stroke={skinColor} strokeWidth="1" />
-            <path d="M0,3.5 L0,6" fill="none" stroke={skinColor} strokeWidth="1" />
-            <path d="M1.5,3 L1.5,5.5" fill="none" stroke={skinColor} strokeWidth="1" />
+          <path d="M-2.8,0 Q-3,5.5 -2.5,11 Q0,12 0,11 Q0,5.5 0,0 Z" fill="rgba(0,0,0,0.05)" />
+          {/* Hand — connected at wrist, relaxed hanging shape */}
+          <g transform="translate(0, 10.5)">
+            {/* Wrist connector */}
+            <rect x="-2.2" y="0" width="4.4" height="2" rx="1" fill={skinColor} />
+            {/* Palm — slightly cupped, natural shape */}
+            <path d="M-2.2,1.5 Q-2.8,3.5 -2,5.5 Q-0.5,7 1,6.5 Q2.5,6 2.8,4 Q3,2.5 2.2,1.5 Z" fill={skinColor} />
+            {/* Fingers — curved, relaxed, hanging down */}
+            <path d="M-1.8,5.2 Q-2,6.5 -1.5,7.5" fill="none" stroke={skinColor} strokeWidth="1.1" strokeLinecap="round" />
+            <path d="M-0.5,5.8 Q-0.5,7.2 -0.2,8" fill="none" stroke={skinColor} strokeWidth="1.1" strokeLinecap="round" />
+            <path d="M0.8,5.6 Q0.9,7 1,7.8" fill="none" stroke={skinColor} strokeWidth="1.1" strokeLinecap="round" />
             {/* Finger tips */}
-            <circle cx="-1.5" cy="5.5" r="0.6" fill={skinColor} />
-            <circle cx="0" cy="6" r="0.6" fill={skinColor} />
-            <circle cx="1.5" cy="5.5" r="0.6" fill={skinColor} />
-            {/* Thumb */}
-            <path d="M-2.5,1 Q-3.5,2 -3,3.5" fill="none" stroke={skinColor} strokeWidth="1.2" strokeLinecap="round" />
+            <circle cx="-1.5" cy="7.5" r="0.55" fill={skinColor} />
+            <circle cx="-0.2" cy="8" r="0.55" fill={skinColor} />
+            <circle cx="1" cy="7.8" r="0.55" fill={skinColor} />
+            {/* Thumb — curls inward naturally */}
+            <path d="M-2.2,2.5 Q-3.2,3.5 -2.8,5" fill="none" stroke={skinColor} strokeWidth="1.2" strokeLinecap="round" />
+            <circle cx="-2.8" cy="5" r="0.5" fill={skinColor} />
           </g>
         </AnimJoint>
       </g>
@@ -151,33 +204,35 @@ function Arm({ fromShoulder, toShoulder, fromElbow, toElbow, dur, trikotColor, s
   )
 }
 
-function Leg({ fromHip, toHip, fromKnee, toKnee, dur, skinColor, trikotColor, sockColor, shoeColor, trikotAccent }) {
+function Leg({ hipAngles, kneeAngles, dur, skinColor, trikotColor, sockColor, shoeColor, trikotAccent }) {
   return (
-    <AnimJoint from={fromHip} to={toHip} dur={dur}>
-      <path d="M-4.5,0 L-4.5,8 Q0,9.5 4.5,8 L4.5,0 Z" fill={trikotColor} opacity="0.92" />
-      <path d="M-3.8,7 L-3.5,16 Q0,17 3.5,16 L3.8,7 Z" fill={skinColor} />
+    <AnimJoint angles={hipAngles} dur={dur}>
+      {/* Hip joint — round connector */}
+      <ellipse cx="0" cy="0" rx="5" ry="3" fill={trikotColor} opacity="0.92" />
+      {/* Shorts / upper thigh — curved taper */}
+      <path d="M-5,1 Q-5.5,4 -4.5,8 Q0,9.5 4.5,8 Q5.5,4 5,1 Z" fill={trikotColor} opacity="0.92" />
+      {/* Thigh skin — curved, tapers to knee */}
+      <path d="M-4.2,7 Q-4.5,11 -3.5,16 Q0,17 3.5,16 Q4.5,11 4.2,7 Z" fill={skinColor} />
       {/* Subtle leg shading */}
-      <path d="M-3.8,7 L-3.5,16 Q0,17 0,16 L0,7 Z" fill="rgba(0,0,0,0.04)" />
+      <path d="M-4.2,7 Q-4.5,11 -3.5,16 Q0,17 0,16 Q0,11 0,7 Z" fill="rgba(0,0,0,0.04)" />
+      {/* Knee joint — round connector */}
       <g transform="translate(0, 16)">
-        <AnimJoint from={fromKnee} to={toKnee} dur={dur * 0.9}>
-          <path d="M-3.2,0 L-3,13 Q0,14.5 3,13 L3.2,0 Z" fill={skinColor} />
-          <path d="M-3.2,11 L-3.2,20 Q0,21.5 3.2,20 L3.2,11 Z" fill={sockColor} />
+        <ellipse cx="0" cy="0" rx="3.8" ry="2.8" fill={skinColor} />
+        <AnimJoint angles={kneeAngles} dur={dur * 0.9}>
+          {/* Shin — curved taper */}
+          <path d="M-3.5,0 Q-3.8,6 -3,13 Q0,14.5 3,13 Q3.8,6 3.5,0 Z" fill={skinColor} />
+          {/* Sock — curved */}
+          <path d="M-3.2,11 Q-3.5,15 -3.2,20 Q0,21.5 3.2,20 Q3.5,15 3.2,11 Z" fill={sockColor} />
           <rect x="-3.2" y="11" width="6.4" height="1.8" rx="0.8" fill={trikotAccent} />
-          {/* Football boot — elongated shape with studs */}
+          {/* Football boot */}
           <g>
-            {/* Boot body — longer in front, shorter at heel */}
             <path d="M-3,19 L-3.5,21 Q-3,23.5 0,24 Q4,24.5 6,23 Q7,22 6.5,20.5 L4,19 Q2,18.5 0,19 Z" fill={shoeColor} />
-            {/* Boot top/ankle */}
             <path d="M-3,19 Q0,17.5 4,19 L4,20.5 Q0,19 -3,20.5 Z" fill={shoeColor} opacity="0.85" />
-            {/* Lace area */}
             <line x1="0" y1="19.5" x2="0" y2="21" stroke="rgba(255,255,255,0.4)" strokeWidth="0.4" />
             <line x1="-0.8" y1="20" x2="0.8" y2="20" stroke="rgba(255,255,255,0.3)" strokeWidth="0.3" />
             <line x1="-0.6" y1="20.8" x2="0.6" y2="20.8" stroke="rgba(255,255,255,0.3)" strokeWidth="0.3" />
-            {/* Accent stripe */}
             <path d="M-2,21.5 Q1,20 4,21" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
-            {/* Sole */}
             <path d="M-3,23.5 Q0,24.5 6,23.5 Q6,24.5 0,25 Q-3,24.5 -3,23.5 Z" fill="#111" opacity="0.6" />
-            {/* Studs */}
             <circle cx="-1" cy="24.2" r="0.5" fill="#333" />
             <circle cx="1.5" cy="24.3" r="0.5" fill="#333" />
             <circle cx="4" cy="24" r="0.5" fill="#333" />
@@ -461,12 +516,13 @@ function BackgroundSVG({ bgId }) {
   )
 }
 
-function PoseEffects({ pose }) {
+function PoseEffects({ pose, ballId }) {
   if (!pose || pose === 'default') return null
+  const bid = ballId || 'ball_einfach'
   switch (pose) {
     case 'krone': return <g><polygon points="-5,-81 -3,-86 0,-81 3,-88 6,-81 9,-86 11,-81" fill="#fbbf24" stroke="#92400e" strokeWidth="0.4" /></g>
-    case 'jonglieren': return <g><circle cx="12" cy="55" r="5" fill="#fff" stroke="#333" strokeWidth="0.8"><animate attributeName="cy" values="55;47;55" dur="0.8s" repeatCount="indefinite" /></circle></g>
-    case 'dribbling': return <g><circle cx="10" cy={GROUND_Y - 4} r="5" fill="#fff" stroke="#333" strokeWidth="0.8"><animate attributeName="cx" values="8;14;8" dur="0.9s" repeatCount="indefinite" /></circle></g>
+    case 'jonglieren': return <g><animateTransform attributeName="transform" type="translate" values="0,0;0,-8;0,0" dur="0.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" /><BallSVG ballId={bid} x={12} y={55} /></g>
+    case 'dribbling': return <g><animateTransform attributeName="transform" type="translate" values="-2,0;4,0;-2,0" dur="0.9s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" /><BallSVG ballId={bid} x={10} y={GROUND_Y - 4} /></g>
     default: return null
   }
 }
@@ -604,16 +660,19 @@ export default function FootballerSVG({
         <g transform={`translate(0, ${CHAR_Y})`} filter="url(#fS)">
           {/* Legs */}
           <g transform="translate(-4, 0)">
-            <Leg fromHip={anim.lHip[0]} toHip={anim.lHip[1]} fromKnee={anim.lKnee[0]} toKnee={anim.lKnee[1]} dur={dur}
+            <Leg hipAngles={anim.lHip} kneeAngles={anim.lKnee} dur={dur}
               skinColor={skinColor} trikotColor={trikotColor} sockColor={sockColor} shoeColor={shoeColor} trikotAccent={trikotAccent} />
           </g>
           <g transform="translate(4, 0)">
-            <Leg fromHip={anim.rHip[0]} toHip={anim.rHip[1]} fromKnee={anim.rKnee[0]} toKnee={anim.rKnee[1]} dur={dur}
+            <Leg hipAngles={anim.rHip} kneeAngles={anim.rKnee} dur={dur}
               skinColor={skinColor} trikotColor={trikotColor} sockColor={sockColor} shoeColor={shoeColor} trikotAccent={trikotAccent} />
           </g>
 
-          {/* Torso — softer, more fabric-like shape */}
-          <path d="M-13,-42 Q-14,-38 -14,-34 L-13,-10 Q-12,0 -7,2 L7,2 Q12,0 13,-10 L14,-34 Q14,-38 13,-42 Z" fill={trikotColor} />
+          {/* Torso — natural shoulder line, slight rounding */}
+          <path d="M-13,-42 Q-14,-39 -14,-34 L-13,-10 Q-12,0 -7,2 L7,2 Q12,0 13,-10 L14,-34 Q14,-39 13,-42 Z" fill={trikotColor} />
+          {/* Small shoulder roundings — subtle, not bulky */}
+          <ellipse cx="-14" cy="-39" rx="2.5" ry="3" fill={trikotColor} />
+          <ellipse cx="14" cy="-39" rx="2.5" ry="3" fill={trikotColor} />
           {/* Fabric folds / shading for 3D cloth look */}
           <path d="M-8,-35 Q-6,-20 -7,-5" fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="0.8" />
           <path d="M8,-35 Q6,-20 7,-5" fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="0.8" />
@@ -621,7 +680,7 @@ export default function FootballerSVG({
           <path d="M-10,-30 Q-8,-28 -10,-25" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="0.5" />
           <path d="M10,-30 Q8,-28 10,-25" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="0.5" />
           {/* Side shading for shape */}
-          <path d="M-13,-42 Q-14,-38 -14,-34 L-13,-10 Q-12,0 -7,2 L-3,2 L-3,-42 Z" fill="rgba(0,0,0,0.04)" />
+          <path d="M-13,-42 Q-14,-39 -14,-34 L-13,-10 Q-12,0 -7,2 L-3,2 L-3,-42 Z" fill="rgba(0,0,0,0.04)" />
           {/* Trikot pattern overlay */}
           <TrikotPatternOverlay pattern={trikotPattern} />
           {/* Accent stripes */}
@@ -643,16 +702,16 @@ export default function FootballerSVG({
 
           {/* Arms — rendered LAST (on top of everything) so always visible */}
           <g transform="translate(-15, -40)">
-            <Arm fromShoulder={anim.lShoulder[0]} toShoulder={anim.lShoulder[1]} fromElbow={anim.lElbow[0]} toElbow={anim.lElbow[1]} dur={dur}
+            <Arm shoulderAngles={anim.lShoulder} elbowAngles={anim.lElbow} dur={dur}
               trikotColor={trikotColor} skinColor={skinColor} />
           </g>
           <g transform="translate(15, -40)">
-            <Arm fromShoulder={anim.rShoulder[0]} toShoulder={anim.rShoulder[1]} fromElbow={anim.rElbow[0]} toElbow={anim.rElbow[1]} dur={dur}
+            <Arm shoulderAngles={anim.rShoulder} elbowAngles={anim.rElbow} dur={dur}
               trikotColor={trikotColor} skinColor={skinColor} />
           </g>
         </g>
 
-        <PoseEffects pose={pose} />
+        <PoseEffects pose={pose} ballId={ballId} />
 
         {ballId && pose !== 'jonglieren' && pose !== 'dribbling' && (
           <BallSVG ballId={ballId} x={20} y={GROUND_Y - 4} />

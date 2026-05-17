@@ -8,7 +8,7 @@ export default function CharacterScreen({ player, onContinue }) {
     <div className="text-center py-8">
       <div className="bg-white rounded-2xl p-8 shadow-xl">
         <div className="flex justify-center mb-4">
-          <FootballerSVG {...appearance} size={160} />
+          <FootballerSVG {...appearance} size={200} />
         </div>
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
           Willkommen, {player.name}!

@@ -69,7 +69,7 @@ export default function EquipmentScreen({ player }) {
             bgId={equip.bgId || null}
             pose={activeChar?.pose || null}
             animation={activeChar?.animation || null}
-            size={200}
+            size={240}
           />
         </div>
         {activeChar && (
