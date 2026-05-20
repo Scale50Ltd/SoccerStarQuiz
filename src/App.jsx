@@ -1,4 +1,11 @@
 import { useState, useEffect } from 'react'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { loadCloudProfiles, createCloudProfile, updateCloudProfile, deleteCloudProfile, saveCloudStats, cloudToLocalProfile, getOrCreateUserProfile } from './lib/cloudDataService'
+import LoginScreen from './components/LoginScreen'
+import RankingScreen from './components/RankingScreen'
+import FriendsScreen from './components/FriendsScreen'
+import MigrateDialog from './components/MigrateDialog'
+import DisplayNameDialog from './components/DisplayNameDialog'
 import StartScreen from './components/StartScreen'
 import CharacterScreen from './components/CharacterScreen'
 import QuizScreen from './components/QuizScreen'
@@ -10,9 +17,6 @@ import EquipmentScreen from './components/EquipmentScreen'
 import CharacterEditor from './components/CharacterEditor'
 import MyCharacters from './components/MyCharacters'
 import BonusScreen from './components/BonusScreen'
-import RankingPreview from './components/RankingPreview'
-import FriendsPreview from './components/FriendsPreview'
-import LoginPreview from './components/LoginPreview'
 import ProfileSelect from './components/ProfileSelect'
 import Nav from './components/Nav'
 import { loadProfiles, saveProfiles, getActiveProfile, activateProfile, snapshotCurrentProfile, createNewProfile } from './profiles'
@@ -61,6 +65,16 @@ function savePlayer(player) {
 }
 
 export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
+  )
+}
+
+function AppInner() {
+  const auth = useAuth()
+
   const [profiles, setProfiles] = useState(loadProfiles)
   const [activeProfileId, setActiveId] = useState(() => {
     const active = getActiveProfile(loadProfiles())
@@ -71,7 +85,6 @@ export default function App() {
     return p ? applyRefundIfNeeded(p) : null
   })
   const [screen, setScreen] = useState(() => {
-    // If there's no profile yet or no active profile, show profile select
     const profs = loadProfiles()
     if (profs.length === 0) return 'profileselect'
     const active = getActiveProfile(profs)
@@ -80,9 +93,93 @@ export default function App() {
   })
   const [lastResult, setLastResult] = useState(null)
 
+  // Cloud state
+  const [cloudProfileId, setCloudProfileId] = useState(null)
+  const [displayName, setDisplayName] = useState('')
+  const [showMigrate, setShowMigrate] = useState(false)
+  const [showDisplayName, setShowDisplayName] = useState(false)
+  const [cloudLoaded, setCloudLoaded] = useState(false)
+
+  // Save player to localStorage
   useEffect(() => {
     if (player) savePlayer(player)
   }, [player])
+
+  // Cloud sync: save stats to Supabase when player changes (debounced)
+  useEffect(() => {
+    if (!auth.isOnline || !cloudProfileId || !player) return
+    const timer = setTimeout(() => {
+      saveCloudStats(cloudProfileId, player).catch(console.error)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [auth.isOnline, cloudProfileId, player])
+
+  // Load cloud profiles when user logs in
+  useEffect(() => {
+    if (!auth.isOnline || !auth.user || cloudLoaded) return
+
+    async function loadCloud() {
+      try {
+        const userProfile = await getOrCreateUserProfile(auth.user.id)
+        setDisplayName(userProfile.display_name || '')
+
+        if (!userProfile.display_name) {
+          setShowDisplayName(true)
+        }
+
+        const alreadyMigrated = localStorage.getItem('soccerStarCloudMigrated') === 'true'
+        const cloudProfiles = await loadCloudProfiles(auth.user.id)
+
+        if (cloudProfiles.length === 0 && !alreadyMigrated) {
+          setShowMigrate(true)
+          setCloudLoaded(true)
+          return
+        }
+
+        const localFormatProfiles = cloudProfiles.map(cloudToLocalProfile)
+        setProfiles(localFormatProfiles)
+
+        if (localFormatProfiles.length > 0) {
+          const first = localFormatProfiles[0]
+          setActiveId(first.id)
+          setCloudProfileId(first.cloudId || first.id)
+          setPlayer(first.player)
+          activateProfile(first)
+          setScreen('start')
+        } else {
+          setScreen('profileselect')
+        }
+        setCloudLoaded(true)
+      } catch (err) {
+        console.error('Cloud load error:', err)
+        setCloudLoaded(true)
+      }
+    }
+    loadCloud()
+  }, [auth.isOnline, auth.user?.id, cloudLoaded])
+
+  // Reset cloud state on logout
+  useEffect(() => {
+    if (!auth.isOnline && cloudLoaded) {
+      setCloudLoaded(false)
+      setCloudProfileId(null)
+      setDisplayName('')
+      // Reload local profiles
+      const localProfs = loadProfiles()
+      setProfiles(localProfs)
+      const active = getActiveProfile(localProfs)
+      if (active) {
+        setActiveId(active.id)
+        activateProfile(active)
+        setPlayer(active.player ? applyRefundIfNeeded(active.player) : null)
+        setScreen('start')
+      } else {
+        setActiveId(null)
+        setPlayer(null)
+        setScreen('profileselect')
+      }
+    }
+  }, [auth.isOnline])
 
   // Save current profile snapshot when switching away or on changes
   function saveCurrentToProfile() {
@@ -93,14 +190,27 @@ export default function App() {
     })
     setProfiles(updated)
     saveProfiles(updated)
+
+    // Cloud sync: save profile data
+    if (auth.isOnline && cloudProfileId) {
+      const snapshot = snapshotCurrentProfile(profiles.find(p => p.id === activeProfileId))
+      if (snapshot) {
+        updateCloudProfile(cloudProfileId, {
+          name: snapshot.player?.name || 'Spieler',
+          appearance: snapshot.appearance,
+          equipment: snapshot.equipment,
+          myCharacters: snapshot.myCharacters,
+          activeCharIdx: snapshot.activeCharIdx,
+        }).catch(console.error)
+      }
+    }
   }
 
   function handleSelectProfile(profile) {
-    // Save current profile first
     saveCurrentToProfile()
-    // Activate new profile
     activateProfile(profile)
     setActiveId(profile.id)
+    setCloudProfileId(profile.cloudId || profile.id)
     let p = profile.player
     p = applyRefundIfNeeded(p)
     setPlayer(p)
@@ -110,28 +220,56 @@ export default function App() {
 
   function handleCreateProfile(name) {
     saveCurrentToProfile()
-    const newProf = createNewProfile(name)
-    const updated = [...profiles, newProf]
-    setProfiles(updated)
-    saveProfiles(updated)
-    // Activate new profile
-    activateProfile(newProf)
-    setActiveId(newProf.id)
-    setPlayer(newProf.player)
-    savePlayer(newProf.player)
-    setScreen('start')
+    if (auth.isOnline) {
+      createCloudProfile(auth.user.id, { name, player: createNewProfile(name).player })
+        .then(() => loadCloudProfiles(auth.user.id))
+        .then(cloudProfiles => {
+          const local = cloudProfiles.map(cloudToLocalProfile)
+          setProfiles(local)
+          const newest = local[local.length - 1]
+          if (newest) handleSelectProfile(newest)
+        })
+        .catch(console.error)
+    } else {
+      const newProf = createNewProfile(name)
+      const updated = [...profiles, newProf]
+      setProfiles(updated)
+      saveProfiles(updated)
+      activateProfile(newProf)
+      setActiveId(newProf.id)
+      setPlayer(newProf.player)
+      savePlayer(newProf.player)
+      setScreen('start')
+    }
   }
 
   function handleDeleteProfile(id) {
-    const updated = profiles.filter(p => p.id !== id)
-    setProfiles(updated)
-    saveProfiles(updated)
-    if (id === activeProfileId && updated.length > 0) {
-      handleSelectProfile(updated[0])
-    } else if (updated.length === 0) {
-      setActiveId(null)
-      setPlayer(null)
-      setScreen('profileselect')
+    if (auth.isOnline) {
+      deleteCloudProfile(id)
+        .then(() => loadCloudProfiles(auth.user.id))
+        .then(cloudProfiles => {
+          const local = cloudProfiles.map(cloudToLocalProfile)
+          setProfiles(local)
+          if (local.length > 0) {
+            handleSelectProfile(local[0])
+          } else {
+            setActiveId(null)
+            setPlayer(null)
+            setScreen('profileselect')
+          }
+        })
+        .catch(console.error)
+    } else {
+      const updated = profiles.filter(p => p.id !== id)
+      setProfiles(updated)
+      saveProfiles(updated)
+      if (id === activeProfileId && updated.length > 0) {
+        handleSelectProfile(updated[0])
+      } else if (updated.length === 0) {
+        setActiveId(null)
+        setPlayer(null)
+        setScreen('profileselect')
+      }
     }
   }
 
@@ -171,7 +309,6 @@ export default function App() {
     const diff = player.difficulty || 'mittel'
 
     setPlayer(prev => {
-      // Store rewards per difficulty
       const byDiff = { ...(prev._byDifficulty || {}) }
       const d = byDiff[diff] || { points: 0, stars: 0, goldenStars: 0 }
       byDiff[diff] = {
@@ -265,6 +402,18 @@ export default function App() {
     setPlayer(prev => ({ ...prev, character: name }))
   }
 
+  // Show loading while auth initializes
+  if (auth.loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-5xl mb-4">⚽</div>
+          <p className="text-green-100 font-bold text-lg">Laden...</p>
+        </div>
+      </div>
+    )
+  }
+
   // Profile select screen (no nav)
   if (screen === 'profileselect') {
     return (
@@ -282,6 +431,38 @@ export default function App() {
   return (
     <div className="min-h-screen">
       {player && <Nav screen={screen} setScreen={setScreen} onSwitchProfiles={handleSwitchProfiles} />}
+
+      {/* Migration dialog */}
+      {showMigrate && auth.isOnline && (
+        <MigrateDialog
+          userId={auth.user.id}
+          onDone={() => {
+            setShowMigrate(false)
+            loadCloudProfiles(auth.user.id).then(cp => {
+              const local = cp.map(cloudToLocalProfile)
+              setProfiles(local)
+              if (local.length > 0) {
+                handleSelectProfile(local[0])
+              } else {
+                setScreen('profileselect')
+              }
+            }).catch(console.error)
+          }}
+        />
+      )}
+
+      {/* Display name dialog */}
+      {showDisplayName && auth.isOnline && (
+        <DisplayNameDialog
+          userId={auth.user.id}
+          currentName={displayName}
+          onDone={(name) => {
+            setDisplayName(name)
+            setShowDisplayName(false)
+          }}
+        />
+      )}
+
       <div className="max-w-lg mx-auto px-4 pt-4 pb-8">
         {screen === 'start' && (
           <StartScreen player={player} onStart={handleStart} />
@@ -328,13 +509,13 @@ export default function App() {
           <BonusScreen player={player} setPlayer={setPlayer} />
         )}
         {screen === 'ranking' && (
-          <RankingPreview player={player} />
+          <RankingScreen player={player} />
         )}
         {screen === 'friends' && (
-          <FriendsPreview />
+          <FriendsScreen />
         )}
         {screen === 'login' && (
-          <LoginPreview setScreen={setScreen} />
+          <LoginScreen setScreen={setScreen} />
         )}
       </div>
     </div>

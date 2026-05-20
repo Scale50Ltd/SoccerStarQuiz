@@ -1,38 +1,42 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { startMusic, stopMusic, unlockAudio, setVolume, getVolume } from '../music'
+import { useAuth } from '../contexts/AuthContext'
 
 const MUSIC_SCREENS = ['start', 'profile', 'shop', 'exchange', 'equipment', 'editor', 'mycharacters', 'bonus']
 
-// All nav items with unique icons and labels, grouped logically
-const NAV_GROUPS = [
-  {
-    label: 'Spielen',
-    items: [
-      { id: 'start', icon: '🏠', label: 'Start' },
-      { id: 'profile', icon: '👤', label: 'Profil' },
-      { id: 'mycharacters', icon: '🧍', label: 'Figur' },
-      { id: 'equipment', icon: '👕', label: 'Outfit' },
-    ],
-  },
-  {
-    label: 'Belohnungen',
-    items: [
-      { id: 'shop', icon: '🛒', label: 'Shop' },
-      { id: 'exchange', icon: '🔄', label: 'Tausch' },
-      { id: 'bonus', icon: '🎁', label: 'Bonus' },
-    ],
-  },
-  {
-    label: 'Online',
-    items: [
-      { id: 'ranking', icon: '🏆', label: 'Rang' },
-      { id: 'friends', icon: '👫', label: 'Freunde' },
-      { id: 'login', icon: '🔑', label: 'Login' },
-    ],
-  },
-]
-
 export default function Nav({ screen, setScreen, onSwitchProfiles }) {
+  const auth = useAuth()
+
+  const NAV_GROUPS = [
+    {
+      label: 'Spielen',
+      items: [
+        { id: 'start', icon: '🏠', label: 'Start' },
+        { id: 'profile', icon: '👤', label: 'Profil' },
+        { id: 'mycharacters', icon: '🧍', label: 'Figur' },
+        { id: 'equipment', icon: '👕', label: 'Outfit' },
+      ],
+    },
+    {
+      label: 'Belohnungen',
+      items: [
+        { id: 'shop', icon: '🛒', label: 'Shop' },
+        { id: 'exchange', icon: '🔄', label: 'Tausch' },
+        { id: 'bonus', icon: '🎁', label: 'Bonus' },
+      ],
+    },
+    {
+      label: 'Online',
+      items: [
+        { id: 'ranking', icon: '🏆', label: 'Rang' },
+        { id: 'friends', icon: '👫', label: 'Freunde' },
+        ...(auth?.isOnline
+          ? [{ id: '_logout', icon: '🚪', label: 'Abmelden' }]
+          : [{ id: 'login', icon: '🔑', label: 'Login' }]
+        ),
+      ],
+    },
+  ]
   const [musicOn, setMusicOn] = useState(() => {
     try { return localStorage.getItem('soccerStarMusic') !== 'off' } catch { return true }
   })
@@ -75,6 +79,13 @@ export default function Nav({ screen, setScreen, onSwitchProfiles }) {
 
   // Close menu when navigating
   function navigate(id) {
+    if (id === '_logout') {
+      auth.signOut().then(() => {
+        setScreen('start')
+      })
+      setMenuOpen(false)
+      return
+    }
     setScreen(id)
     setMenuOpen(false)
   }
