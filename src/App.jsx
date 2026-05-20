@@ -168,15 +168,31 @@ function AppInner() {
           }
         }
 
-        const localFormatProfiles = finalCloudProfiles.map(cloudToLocalProfile)
+        const localFormatProfiles = cloudProfiles.map(cloudToLocalProfile)
         setProfiles(localFormatProfiles)
 
         if (localFormatProfiles.length > 0) {
           const first = localFormatProfiles[0]
           setActiveId(first.id)
           setCloudProfileId(first.cloudId || first.id)
-          setPlayer(first.player)
-          activateProfile(first)
+
+          // Merge: if local player has more points than cloud, keep local values
+          const localPlayer = loadPlayer()
+          const cloudPlayer = first.player
+          let bestPlayer = cloudPlayer
+
+          if (localPlayer && cloudPlayer) {
+            const localTotal = (localPlayer.points || 0) + (localPlayer.coins || 0)
+            const cloudTotal = (cloudPlayer.points || 0) + (cloudPlayer.coins || 0)
+            if (localTotal > cloudTotal) {
+              // Local data is ahead — use it and sync to cloud
+              bestPlayer = { ...localPlayer, name: cloudPlayer.name || localPlayer.name }
+              saveCloudStats(first.cloudId || first.id, bestPlayer).catch(console.error)
+            }
+          }
+
+          setPlayer(bestPlayer)
+          activateProfile({ ...first, player: bestPlayer })
           setScreen('start')
         } else {
           setScreen('profileselect')
@@ -359,6 +375,15 @@ function AppInner() {
     })
     setLastResult({ ...result, earned })
     setScreen('result')
+
+    // Immediate cloud sync after quiz (don't wait for debounce)
+    if (auth.isOnline && cloudProfileId) {
+      // Read fresh player state after setPlayer completes
+      setTimeout(() => {
+        const fresh = JSON.parse(localStorage.getItem('soccerStarPlayer'))
+        if (fresh) saveCloudStats(cloudProfileId, fresh).catch(console.error)
+      }, 100)
+    }
   }
 
   // Exchange: 10 points → 1 golden star (from a specific difficulty)
