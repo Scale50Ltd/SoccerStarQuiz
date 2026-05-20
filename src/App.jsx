@@ -437,7 +437,6 @@ function AppInner() {
   }
 
   // Login gate: show login screen first if not logged in and not in offline mode
-  // supabase being null means env vars not set (local dev without .env) — skip gate
   const supabaseConfigured = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
   if (!auth.isOnline && !offlineMode && supabaseConfigured) {
     return (
@@ -445,7 +444,6 @@ function AppInner() {
         <div className="max-w-lg mx-auto px-4 pt-4 pb-8">
           <LoginScreen setScreen={() => {}} onOffline={() => {
             setOfflineMode(true)
-            // Reload local profiles for offline play
             const localProfs = loadProfiles()
             setProfiles(localProfs)
             const active = getActiveProfile(localProfs)
@@ -458,6 +456,18 @@ function AppInner() {
               setScreen('profileselect')
             }
           }} />
+        </div>
+      </div>
+    )
+  }
+
+  // Loading screen while cloud profiles are being fetched after login
+  if (auth.isOnline && !cloudLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-5xl mb-4">⚽</div>
+          <p className="text-green-100 font-bold text-lg">Daten werden geladen...</p>
         </div>
       </div>
     )
