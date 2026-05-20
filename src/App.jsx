@@ -137,7 +137,43 @@ function AppInner() {
           return
         }
 
-        const localFormatProfiles = cloudProfiles.map(cloudToLocalProfile)
+        let finalCloudProfiles = cloudProfiles
+
+        // Self-heal: if logged in but no cloud profiles exist, create one from local data
+        if (finalCloudProfiles.length === 0) {
+          const localProfs = loadProfiles()
+          if (localProfs.length > 0 && localProfs[0].player) {
+            // Upload first local profile to cloud
+            try {
+              await createCloudProfile(auth.user.id, {
+                name: localProfs[0].player.name || 'Spieler',
+                player: localProfs[0].player,
+                appearance: localProfs[0].appearance,
+                equipment: localProfs[0].equipment,
+                myCharacters: localProfs[0].myCharacters,
+                activeCharIdx: localProfs[0].activeCharIdx || 0,
+              })
+              finalCloudProfiles = await loadCloudProfiles(auth.user.id)
+            } catch (e) {
+              console.error('Self-heal profile creation failed:', e)
+            }
+          }
+
+          // If still no cloud profiles, create a fresh one
+          if (finalCloudProfiles.length === 0) {
+            try {
+              await createCloudProfile(auth.user.id, {
+                name: 'Spieler',
+                player: createNewProfile('Spieler').player,
+              })
+              finalCloudProfiles = await loadCloudProfiles(auth.user.id)
+            } catch (e) {
+              console.error('Fresh profile creation failed:', e)
+            }
+          }
+        }
+
+        const localFormatProfiles = finalCloudProfiles.map(cloudToLocalProfile)
         setProfiles(localFormatProfiles)
 
         if (localFormatProfiles.length > 0) {
