@@ -6,7 +6,8 @@ import { shopItems } from '../shopData'
 import StadiumBg from './StadiumBg'
 import { getOverallTier } from '../unlocks'
 import { useAuth } from '../contexts/AuthContext'
-import { getOrCreateUserProfile, updateDisplayName } from '../lib/cloudDataService'
+import { getOrCreateUserProfile, updateDisplayName, loadCloudProfiles } from '../lib/cloudDataService'
+import { supabase } from '../lib/supabase'
 
 export default function ProfileScreen({ player, setScreen }) {
   const auth = useAuth()
@@ -98,6 +99,9 @@ export default function ProfileScreen({ player, setScreen }) {
 
           {/* Display name editor (only when online) */}
           {auth?.isOnline && <DisplayNameEditor userId={auth.user.id} />}
+
+          {/* Sync debug info (only when online) */}
+          {auth?.isOnline && <SyncDebug userId={auth.user.id} />}
 
           {/* Action buttons */}
           <div className="grid grid-cols-2 gap-3">
@@ -204,6 +208,57 @@ function DisplayNameEditor({ userId }) {
           {message}
         </p>
       )}
+    </div>
+  )
+}
+
+function SyncDebug({ userId }) {
+  const [info, setInfo] = useState(null)
+  const [open, setOpen] = useState(false)
+
+  async function loadDebug() {
+    try {
+      const profiles = await loadCloudProfiles(userId)
+      setInfo({ profiles, error: null })
+    } catch (e) {
+      setInfo({ profiles: [], error: e.message })
+    }
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => { setOpen(true); loadDebug() }}
+        className="w-full text-xs text-gray-400 py-1 hover:text-gray-600">
+        Sync-Status anzeigen
+      </button>
+    )
+  }
+
+  return (
+    <div className="bg-gray-50 rounded-2xl p-3 shadow-inner text-xs space-y-2">
+      <div className="flex justify-between items-center">
+        <span className="font-bold text-gray-600">Sync-Debug</span>
+        <button onClick={() => setOpen(false)} className="text-gray-400">✕</button>
+      </div>
+      <div className="text-gray-500">User-ID: <span className="font-mono">{userId.slice(0, 8)}...</span></div>
+      {info?.error && <div className="text-red-500 font-bold">Fehler: {info.error}</div>}
+      {info?.profiles?.map((p, i) => (
+        <div key={i} className="bg-white rounded-lg p-2 space-y-1">
+          <div>Profil: <span className="font-bold">{p.name}</span> <span className="font-mono text-gray-400">({p.id?.slice(0, 8)}...)</span></div>
+          {p.stats && (Array.isArray(p.stats) ? p.stats : [p.stats]).map((s, j) => (
+            <div key={j} className="text-green-700">
+              Cloud-Stats: {s.points} Pkt, {s.stars} Sterne, {s.golden_stars} Gold, {s.coins} Münzen, {s.rounds_played} Runden
+            </div>
+          ))}
+          {(!p.stats || (Array.isArray(p.stats) && p.stats.length === 0)) && (
+            <div className="text-red-500 font-bold">KEINE STATS-ZEILE!</div>
+          )}
+        </div>
+      ))}
+      {info?.profiles?.length === 0 && !info?.error && (
+        <div className="text-red-500 font-bold">KEINE CLOUD-PROFILE GEFUNDEN!</div>
+      )}
+      <button onClick={loadDebug} className="text-blue-500 font-bold">Neu laden</button>
     </div>
   )
 }

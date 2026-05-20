@@ -79,17 +79,19 @@ export async function createCloudProfile(userId, profileData) {
 }
 
 export async function updateCloudProfile(profileId, profileData) {
-  const { name, appearance, equipment, myCharacters, activeCharIdx } = profileData
+  // Only include fields that were explicitly passed (don't wipe unmentioned fields)
+  const updateObj = {}
+  if ('name' in profileData) updateObj.name = profileData.name
+  if ('appearance' in profileData) updateObj.appearance = profileData.appearance ?? null
+  if ('equipment' in profileData) updateObj.equipment = profileData.equipment ?? null
+  if ('myCharacters' in profileData) updateObj.my_characters = profileData.myCharacters ?? null
+  if ('activeCharIdx' in profileData) updateObj.active_char_idx = profileData.activeCharIdx ?? 0
+
+  if (Object.keys(updateObj).length === 0) return null
 
   const { data, error } = await supabase
     .from('player_profiles')
-    .update({
-      name,
-      appearance: appearance ?? null,
-      equipment: equipment ?? null,
-      my_characters: myCharacters ?? null,
-      active_char_idx: activeCharIdx ?? 0,
-    })
+    .update(updateObj)
     .eq('id', profileId)
     .select()
     .single()

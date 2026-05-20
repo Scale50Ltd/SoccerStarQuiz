@@ -350,39 +350,37 @@ function AppInner() {
 
     const diff = player.difficulty || 'mittel'
 
-    setPlayer(prev => {
-      const byDiff = { ...(prev._byDifficulty || {}) }
-      const d = byDiff[diff] || { points: 0, stars: 0, goldenStars: 0 }
-      byDiff[diff] = {
-        points: d.points + earned.points,
-        stars: d.stars + earned.stars,
-        goldenStars: d.goldenStars + earned.goldenStars,
-      }
+    // Compute updated player BEFORE setPlayer so we can sync immediately
+    const byDiff = { ...(player._byDifficulty || {}) }
+    const d = byDiff[diff] || { points: 0, stars: 0, goldenStars: 0 }
+    byDiff[diff] = {
+      points: d.points + earned.points,
+      stars: d.stars + earned.stars,
+      goldenStars: d.goldenStars + earned.goldenStars,
+    }
 
-      const updated = {
-        ...prev,
-        points: prev.points + earned.points,
-        stars: prev.stars + earned.stars,
-        goldenStars: prev.goldenStars + earned.goldenStars,
-        _roundsPlayed: (prev._roundsPlayed || 0) + 1,
-        _correctAnswers: (prev._correctAnswers || 0) + result.correct,
-        _byDifficulty: byDiff,
-      }
-      if (result.total === 10) {
-        return markDayPlayed(updated)
-      }
-      return updated
-    })
+    let updatedPlayer = {
+      ...player,
+      points: player.points + earned.points,
+      stars: player.stars + earned.stars,
+      goldenStars: player.goldenStars + earned.goldenStars,
+      _roundsPlayed: (player._roundsPlayed || 0) + 1,
+      _correctAnswers: (player._correctAnswers || 0) + result.correct,
+      _byDifficulty: byDiff,
+    }
+    if (result.total === 10) {
+      updatedPlayer = markDayPlayed(updatedPlayer)
+    }
+
+    setPlayer(updatedPlayer)
     setLastResult({ ...result, earned })
     setScreen('result')
 
-    // Immediate cloud sync after quiz (don't wait for debounce)
+    // Immediate cloud sync with the computed values (no race condition)
     if (auth.isOnline && cloudProfileId) {
-      // Read fresh player state after setPlayer completes
-      setTimeout(() => {
-        const fresh = JSON.parse(localStorage.getItem('soccerStarPlayer'))
-        if (fresh) saveCloudStats(cloudProfileId, fresh).catch(console.error)
-      }, 100)
+      saveCloudStats(cloudProfileId, updatedPlayer)
+        .then(() => console.log('Cloud sync OK:', updatedPlayer.points, 'Punkte'))
+        .catch(err => console.error('CLOUD SYNC FEHLER:', err))
     }
   }
 
