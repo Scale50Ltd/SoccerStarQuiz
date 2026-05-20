@@ -128,45 +128,40 @@ function AppInner() {
           setShowDisplayName(true)
         }
 
-        const alreadyMigrated = localStorage.getItem('soccerStarCloudMigrated') === 'true'
-        const cloudProfiles = await loadCloudProfiles(auth.user.id)
+        let cloudProfiles = await loadCloudProfiles(auth.user.id)
 
-        if (cloudProfiles.length === 0 && !alreadyMigrated) {
-          setShowMigrate(true)
-          setCloudLoaded(true)
-          return
-        }
-
-        let finalCloudProfiles = cloudProfiles
-
-        // Self-heal: if logged in but no cloud profiles exist, create one from local data
-        if (finalCloudProfiles.length === 0) {
+        // Self-heal: no cloud profiles → try to create one
+        if (cloudProfiles.length === 0) {
+          // First try: upload local data if available
           const localProfs = loadProfiles()
-          if (localProfs.length > 0 && localProfs[0].player) {
-            // Upload first local profile to cloud
+          const hasLocalData = localProfs.length > 0 && localProfs[0].player &&
+            (localProfs[0].player.points > 0 || localProfs[0].player.coins > 0)
+
+          if (hasLocalData) {
             try {
               await createCloudProfile(auth.user.id, {
-                name: localProfs[0].player.name || 'Spieler',
+                name: localProfs[0].player.name || userProfile.display_name || 'Spieler',
                 player: localProfs[0].player,
                 appearance: localProfs[0].appearance,
                 equipment: localProfs[0].equipment,
                 myCharacters: localProfs[0].myCharacters,
                 activeCharIdx: localProfs[0].activeCharIdx || 0,
               })
-              finalCloudProfiles = await loadCloudProfiles(auth.user.id)
+              cloudProfiles = await loadCloudProfiles(auth.user.id)
             } catch (e) {
-              console.error('Self-heal profile creation failed:', e)
+              console.error('Local data upload failed:', e)
             }
           }
 
-          // If still no cloud profiles, create a fresh one
-          if (finalCloudProfiles.length === 0) {
+          // Second try: create a fresh profile
+          if (cloudProfiles.length === 0) {
             try {
+              const name = userProfile.display_name || 'Spieler'
               await createCloudProfile(auth.user.id, {
-                name: 'Spieler',
-                player: createNewProfile('Spieler').player,
+                name,
+                player: createNewProfile(name).player,
               })
-              finalCloudProfiles = await loadCloudProfiles(auth.user.id)
+              cloudProfiles = await loadCloudProfiles(auth.user.id)
             } catch (e) {
               console.error('Fresh profile creation failed:', e)
             }
