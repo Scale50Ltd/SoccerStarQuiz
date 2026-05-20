@@ -18,7 +18,7 @@ function translateError(message) {
   return message
 }
 
-export default function LoginScreen({ setScreen }) {
+export default function LoginScreen({ setScreen, onOffline }) {
   const { signIn, signUp, resetPassword } = useAuth()
   const [mode, setMode] = useState('login') // 'login' | 'register' | 'reset'
   const [email, setEmail] = useState('')
@@ -204,10 +204,10 @@ export default function LoginScreen({ setScreen }) {
 
       {/* Offline / skip button */}
       <button
-        onClick={() => setScreen('start')}
-        className="w-full py-4 bg-gray-100 text-gray-600 font-bold rounded-2xl shadow hover:bg-gray-200 active:scale-95 transition-all text-base border-2 border-gray-200"
+        onClick={() => onOffline ? onOffline() : setScreen('start')}
+        className="w-full py-3 bg-gray-50 text-gray-500 font-semibold rounded-2xl hover:bg-gray-100 active:scale-95 transition-all text-sm border border-gray-200"
       >
-        🎮 Weiter ohne Anmeldung (offline spielen)
+        Ohne Anmeldung weiterspielen (offline)
       </button>
     </div>
   )

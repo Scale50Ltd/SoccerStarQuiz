@@ -92,6 +92,7 @@ function AppInner() {
     return 'start'
   })
   const [lastResult, setLastResult] = useState(null)
+  const [offlineMode, setOfflineMode] = useState(false)
 
   // Cloud state
   const [cloudProfileId, setCloudProfileId] = useState(null)
@@ -158,26 +159,16 @@ function AppInner() {
     loadCloud()
   }, [auth.isOnline, auth.user?.id, cloudLoaded])
 
-  // Reset cloud state on logout
+  // Reset cloud state on logout → go back to login screen
   useEffect(() => {
     if (!auth.isOnline && cloudLoaded) {
       setCloudLoaded(false)
       setCloudProfileId(null)
       setDisplayName('')
-      // Reload local profiles
-      const localProfs = loadProfiles()
-      setProfiles(localProfs)
-      const active = getActiveProfile(localProfs)
-      if (active) {
-        setActiveId(active.id)
-        activateProfile(active)
-        setPlayer(active.player ? applyRefundIfNeeded(active.player) : null)
-        setScreen('start')
-      } else {
-        setActiveId(null)
-        setPlayer(null)
-        setScreen('profileselect')
-      }
+      setOfflineMode(false)
+      setActiveId(null)
+      setPlayer(null)
+      setScreen('login')
     }
   }, [auth.isOnline])
 
@@ -409,6 +400,33 @@ function AppInner() {
         <div className="text-center">
           <div className="text-5xl mb-4">⚽</div>
           <p className="text-green-100 font-bold text-lg">Laden...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Login gate: show login screen first if not logged in and not in offline mode
+  // supabase being null means env vars not set (local dev without .env) — skip gate
+  const supabaseConfigured = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
+  if (!auth.isOnline && !offlineMode && supabaseConfigured) {
+    return (
+      <div className="min-h-screen">
+        <div className="max-w-lg mx-auto px-4 pt-4 pb-8">
+          <LoginScreen setScreen={() => {}} onOffline={() => {
+            setOfflineMode(true)
+            // Reload local profiles for offline play
+            const localProfs = loadProfiles()
+            setProfiles(localProfs)
+            const active = getActiveProfile(localProfs)
+            if (active) {
+              setActiveId(active.id)
+              activateProfile(active)
+              setPlayer(active.player ? applyRefundIfNeeded(active.player) : null)
+              setScreen('start')
+            } else {
+              setScreen('profileselect')
+            }
+          }} />
         </div>
       </div>
     )

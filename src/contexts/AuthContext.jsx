@@ -7,6 +7,10 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
+function getAppUrl() {
+  return import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -15,6 +19,22 @@ export function AuthProvider({ children }) {
     if (!supabase) {
       setLoading(false)
       return
+    }
+
+    // Handle auth callback: check URL for auth tokens (email confirmation, password reset)
+    const hash = window.location.hash
+    const params = new URLSearchParams(window.location.search)
+    if (hash && hash.includes('access_token')) {
+      // Supabase implicit flow — tokens in hash, client picks them up automatically
+      // Clean up URL after a short delay to let supabase process
+      setTimeout(() => {
+        window.history.replaceState(null, '', window.location.pathname)
+      }, 500)
+    } else if (params.get('code')) {
+      // PKCE flow — exchange code for session
+      supabase.auth.exchangeCodeForSession(params.get('code')).then(() => {
+        window.history.replaceState(null, '', window.location.pathname)
+      }).catch(console.error)
     }
 
     // Get initial session
@@ -35,7 +55,13 @@ export function AuthProvider({ children }) {
 
   async function signUp(email, password) {
     if (!supabase) throw new Error('Supabase nicht konfiguriert')
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: getAppUrl(),
+      },
+    })
     if (error) throw error
     return data
   }
@@ -55,7 +81,9 @@ export function AuthProvider({ children }) {
 
   async function resetPassword(email) {
     if (!supabase) throw new Error('Supabase nicht konfiguriert')
-    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: getAppUrl(),
+    })
     if (error) throw error
   }
 
