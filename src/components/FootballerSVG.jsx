@@ -106,12 +106,12 @@ const ANIMATIONS = {
     lKnee: [0, 2, 1, 2], rKnee: [1, 3, 2, 3],
     dur: 2.5
   },
-  kraft: { // Flex — arms up showing muscles
-    lShoulder: [-108, -118, -112, -118], rShoulder: [108, 118, 112, 118],
-    lElbow: [-68, -78, -72, -78], rElbow: [-68, -78, -72, -78],
+  kraft: { // Flex — double bicep pose, fists visible in front of head
+    lShoulder: [-82, -88, -84, -88], rShoulder: [82, 88, 84, 88],
+    lElbow: [-95, -105, -98, -105], rElbow: [-95, -105, -98, -105],
     lHip: [1, 3, 2, 3], rHip: [-1, -3, -2, -3],
     lKnee: [0, 1, 0, 0], rKnee: [0, 0, 0, 1],
-    dur: 1.2
+    dur: 1.5
   },
   fallrueck: { // Kick — arms out for balance
     lShoulder: [-10, -16, -12, -18], rShoulder: [8, 14, 10, 16],
@@ -165,7 +165,7 @@ function AnimJoint({ angles, dur, children }) {
   )
 }
 
-function Arm({ shoulderAngles, elbowAngles, dur, trikotColor, skinColor }) {
+function Arm({ shoulderAngles, elbowAngles, dur, trikotColor, skinColor, fist }) {
   return (
     <AnimJoint angles={shoulderAngles} dur={dur}>
       {/* Small shoulder cap — subtle round joint */}
@@ -180,24 +180,42 @@ function Arm({ shoulderAngles, elbowAngles, dur, trikotColor, skinColor }) {
           <path d="M-2.8,0 Q-3,5.5 -2.5,11 Q0,12 2.5,11 Q3,5.5 2.8,0 Z" fill={skinColor} />
           {/* Subtle arm shading */}
           <path d="M-2.8,0 Q-3,5.5 -2.5,11 Q0,12 0,11 Q0,5.5 0,0 Z" fill="rgba(0,0,0,0.05)" />
-          {/* Hand — connected at wrist, relaxed hanging shape */}
-          <g transform="translate(0, 10.5)">
-            {/* Wrist connector */}
-            <rect x="-2.2" y="0" width="4.4" height="2" rx="1" fill={skinColor} />
-            {/* Palm — slightly cupped, natural shape */}
-            <path d="M-2.2,1.5 Q-2.8,3.5 -2,5.5 Q-0.5,7 1,6.5 Q2.5,6 2.8,4 Q3,2.5 2.2,1.5 Z" fill={skinColor} />
-            {/* Fingers — curved, relaxed, hanging down */}
-            <path d="M-1.8,5.2 Q-2,6.5 -1.5,7.5" fill="none" stroke={skinColor} strokeWidth="1.1" strokeLinecap="round" />
-            <path d="M-0.5,5.8 Q-0.5,7.2 -0.2,8" fill="none" stroke={skinColor} strokeWidth="1.1" strokeLinecap="round" />
-            <path d="M0.8,5.6 Q0.9,7 1,7.8" fill="none" stroke={skinColor} strokeWidth="1.1" strokeLinecap="round" />
-            {/* Finger tips */}
-            <circle cx="-1.5" cy="7.5" r="0.55" fill={skinColor} />
-            <circle cx="-0.2" cy="8" r="0.55" fill={skinColor} />
-            <circle cx="1" cy="7.8" r="0.55" fill={skinColor} />
-            {/* Thumb — curls inward naturally */}
-            <path d="M-2.2,2.5 Q-3.2,3.5 -2.8,5" fill="none" stroke={skinColor} strokeWidth="1.2" strokeLinecap="round" />
-            <circle cx="-2.8" cy="5" r="0.5" fill={skinColor} />
-          </g>
+          {fist ? (
+            /* Clenched fist — compact, rounded, powerful */
+            <g transform="translate(0, 10.5)">
+              {/* Wrist */}
+              <rect x="-2.2" y="0" width="4.4" height="2" rx="1" fill={skinColor} />
+              {/* Fist body — compact rounded shape */}
+              <path d="M-2.5,1.5 Q-3,3 -2.5,5 Q-1,6.5 1,6.5 Q3,6.5 3,4.5 Q3,2.5 2.5,1.5 Z" fill={skinColor} />
+              {/* Finger ridges across the fist */}
+              <path d="M-1.5,3.5 Q0,3.2 1.5,3.5" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="0.4" strokeLinecap="round" />
+              <path d="M-1.3,4.5 Q0,4.2 1.3,4.5" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="0.4" strokeLinecap="round" />
+              {/* Thumb curled over fingers */}
+              <path d="M-2.5,2.5 Q-3.2,3.5 -2.8,4.8 Q-2.2,5.2 -1.5,4.5" fill={skinColor} stroke="rgba(0,0,0,0.08)" strokeWidth="0.3" />
+              {/* Knuckle highlights */}
+              <circle cx="-0.8" cy="2.8" r="0.6" fill="rgba(255,255,255,0.1)" />
+              <circle cx="0.8" cy="2.8" r="0.6" fill="rgba(255,255,255,0.1)" />
+            </g>
+          ) : (
+            /* Hand — connected at wrist, relaxed hanging shape */
+            <g transform="translate(0, 10.5)">
+              {/* Wrist connector */}
+              <rect x="-2.2" y="0" width="4.4" height="2" rx="1" fill={skinColor} />
+              {/* Palm — slightly cupped, natural shape */}
+              <path d="M-2.2,1.5 Q-2.8,3.5 -2,5.5 Q-0.5,7 1,6.5 Q2.5,6 2.8,4 Q3,2.5 2.2,1.5 Z" fill={skinColor} />
+              {/* Fingers — curved, relaxed, hanging down */}
+              <path d="M-1.8,5.2 Q-2,6.5 -1.5,7.5" fill="none" stroke={skinColor} strokeWidth="1.1" strokeLinecap="round" />
+              <path d="M-0.5,5.8 Q-0.5,7.2 -0.2,8" fill="none" stroke={skinColor} strokeWidth="1.1" strokeLinecap="round" />
+              <path d="M0.8,5.6 Q0.9,7 1,7.8" fill="none" stroke={skinColor} strokeWidth="1.1" strokeLinecap="round" />
+              {/* Finger tips */}
+              <circle cx="-1.5" cy="7.5" r="0.55" fill={skinColor} />
+              <circle cx="-0.2" cy="8" r="0.55" fill={skinColor} />
+              <circle cx="1" cy="7.8" r="0.55" fill={skinColor} />
+              {/* Thumb — curls inward naturally */}
+              <path d="M-2.2,2.5 Q-3.2,3.5 -2.8,5" fill="none" stroke={skinColor} strokeWidth="1.2" strokeLinecap="round" />
+              <circle cx="-2.8" cy="5" r="0.5" fill={skinColor} />
+            </g>
+          )}
         </AnimJoint>
       </g>
     </AnimJoint>
@@ -520,6 +538,36 @@ function PoseEffects({ pose, ballId }) {
   if (!pose || pose === 'default') return null
   const bid = ballId || 'ball_einfach'
   switch (pose) {
+    case 'kraft': return (
+      <g>
+        {/* "Stark!" text above the figure */}
+        <text x="0" y="-78" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#f59e0b" opacity="0.85">
+          Stark!
+          <animate attributeName="opacity" values="0.85;1;0.85" dur="1.5s" repeatCount="indefinite" />
+        </text>
+        {/* Sparkles around the arms — small animated stars */}
+        <g>
+          <polygon points="-28,-48 -27,-50 -26,-48 -27,-46" fill="#fbbf24" opacity="0.7">
+            <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.2s" repeatCount="indefinite" />
+          </polygon>
+          <polygon points="28,-48 29,-50 30,-48 29,-46" fill="#fbbf24" opacity="0.6">
+            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.0s" repeatCount="indefinite" />
+          </polygon>
+          <polygon points="-22,-56 -21,-58 -20,-56 -21,-54" fill="#fde68a" opacity="0.5">
+            <animate attributeName="opacity" values="0.5;0.1;0.5" dur="1.4s" repeatCount="indefinite" />
+          </polygon>
+          <polygon points="22,-56 23,-58 24,-56 23,-54" fill="#fde68a" opacity="0.6">
+            <animate attributeName="opacity" values="0.2;0.7;0.2" dur="1.1s" repeatCount="indefinite" />
+          </polygon>
+          <circle cx="-32" cy="-42" r="1" fill="#fbbf24" opacity="0.4">
+            <animate attributeName="opacity" values="0.4;0;0.4" dur="1.3s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="32" cy="-42" r="1" fill="#fbbf24" opacity="0.5">
+            <animate attributeName="opacity" values="0.1;0.5;0.1" dur="0.9s" repeatCount="indefinite" />
+          </circle>
+        </g>
+      </g>
+    )
     case 'krone': return <g><polygon points="-5,-81 -3,-86 0,-81 3,-88 6,-81 9,-86 11,-81" fill="#fbbf24" stroke="#92400e" strokeWidth="0.4" /></g>
     case 'jonglieren': return <g><animateTransform attributeName="transform" type="translate" values="0,0;0,-8;0,0" dur="0.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" /><BallSVG ballId={bid} x={12} y={55} /></g>
     case 'dribbling': return <g><animateTransform attributeName="transform" type="translate" values="-2,0;4,0;-2,0" dur="0.9s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" /><BallSVG ballId={bid} x={10} y={GROUND_Y - 4} /></g>
@@ -703,11 +751,11 @@ export default function FootballerSVG({
           {/* Arms — rendered LAST (on top of everything) so always visible */}
           <g transform="translate(-15, -40)">
             <Arm shoulderAngles={anim.lShoulder} elbowAngles={anim.lElbow} dur={dur}
-              trikotColor={trikotColor} skinColor={skinColor} />
+              trikotColor={trikotColor} skinColor={skinColor} fist={pose === 'kraft'} />
           </g>
           <g transform="translate(15, -40)">
             <Arm shoulderAngles={anim.rShoulder} elbowAngles={anim.rElbow} dur={dur}
-              trikotColor={trikotColor} skinColor={skinColor} />
+              trikotColor={trikotColor} skinColor={skinColor} fist={pose === 'kraft'} />
           </g>
         </g>
 
