@@ -1,11 +1,15 @@
+import { useState, useEffect } from 'react'
 import FootballerSVG from './FootballerSVG'
 import { loadAppearance } from './CharacterEditor'
 import { loadEquipment, TRIKOT_DATA } from './EquipmentScreen'
 import { shopItems } from '../shopData'
 import StadiumBg from './StadiumBg'
 import { getOverallTier } from '../unlocks'
+import { useAuth } from '../contexts/AuthContext'
+import { getOrCreateUserProfile, updateDisplayName } from '../lib/cloudDataService'
 
 export default function ProfileScreen({ player, setScreen }) {
+  const auth = useAuth()
   const appearance = loadAppearance()
   const equip = loadEquipment()
   const trikotInfo = equip.trikotId ? TRIKOT_DATA[equip.trikotId] : null
@@ -92,6 +96,9 @@ export default function ProfileScreen({ player, setScreen }) {
             </div>
           )}
 
+          {/* Display name editor (only when online) */}
+          {auth?.isOnline && <DisplayNameEditor userId={auth.user.id} />}
+
           {/* Action buttons */}
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -124,6 +131,79 @@ export default function ProfileScreen({ player, setScreen }) {
           <div className="h-32"></div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function DisplayNameEditor({ userId }) {
+  const [name, setName] = useState('')
+  const [original, setOriginal] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    getOrCreateUserProfile(userId).then(p => {
+      setName(p.display_name || '')
+      setOriginal(p.display_name || '')
+      setLoaded(true)
+    }).catch(() => setLoaded(true))
+  }, [userId])
+
+  async function handleSave() {
+    const trimmed = name.trim()
+    if (!trimmed || trimmed.length < 2) {
+      setMessage('Mindestens 2 Zeichen!')
+      return
+    }
+    if (trimmed.length > 20) {
+      setMessage('Maximal 20 Zeichen!')
+      return
+    }
+    if (trimmed === original) {
+      setMessage('Name ist unverändert.')
+      return
+    }
+    setSaving(true)
+    setMessage('')
+    try {
+      await updateDisplayName(userId, trimmed)
+      setOriginal(trimmed)
+      setMessage('Anzeige-Name gespeichert!')
+    } catch (err) {
+      setMessage('Fehler: ' + (err.message || 'Bitte erneut versuchen.'))
+    }
+    setSaving(false)
+  }
+
+  if (!loaded) return null
+
+  return (
+    <div className="bg-white/95 backdrop-blur rounded-2xl p-4 shadow-lg">
+      <h3 className="font-bold text-gray-700 mb-2 text-lg">🏷️ Anzeige-Name</h3>
+      <p className="text-xs text-gray-500 mb-2">So sehen dich andere in der Rangliste und Freundesliste.</p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={name}
+          onChange={e => { setName(e.target.value); setMessage('') }}
+          maxLength={20}
+          placeholder="z.B. Familie Müller"
+          className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-xl focus:border-green-400 focus:outline-none text-base"
+        />
+        <button
+          onClick={handleSave}
+          disabled={saving || !name.trim()}
+          className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+        >
+          {saving ? '...' : 'Speichern'}
+        </button>
+      </div>
+      {message && (
+        <p className={`text-sm font-semibold mt-2 ${message.includes('gespeichert') ? 'text-green-600' : 'text-amber-600'}`}>
+          {message}
+        </p>
+      )}
     </div>
   )
 }

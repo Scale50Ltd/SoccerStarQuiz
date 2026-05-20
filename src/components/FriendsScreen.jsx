@@ -48,14 +48,15 @@ export default function FriendsScreen() {
         const stats = await loadFriendStats(acceptedIds)
         const map = {}
         for (const s of stats ?? []) {
-          map[s.user_id] = s
+          map[s.owner_user_id] = s
         }
         setStatsMap(map)
       } else {
         setStatsMap({})
       }
     } catch (e) {
-      setError('Fehler beim Laden der Freunde.')
+      console.error('Friends load error:', e)
+      setError('Fehler beim Laden der Freunde. ' + (e?.message || ''))
     } finally {
       setLoading(false)
     }
@@ -232,7 +233,7 @@ export default function FriendsScreen() {
                         <div className="font-bold text-gray-800 truncate">{getFriendName(f)}</div>
                         <div className="text-xs text-gray-500">
                           {stat
-                            ? `${stat.total_points ?? 0} Punkte · ⭐${stat.total_stars ?? 0}`
+                            ? `${stat.points ?? 0} Punkte · ⭐${stat.stars ?? 0}`
                             : 'Noch keine Stats'}
                         </div>
                       </div>

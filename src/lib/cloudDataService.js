@@ -44,7 +44,7 @@ export async function loadCloudProfiles(userId) {
   const { data, error } = await supabase
     .from('player_profiles')
     .select('*, stats(*)')
-    .eq('user_id', userId)
+    .eq('owner_user_id', userId)
     .order('created_at', { ascending: true })
 
   if (error) throw error
@@ -57,7 +57,7 @@ export async function createCloudProfile(userId, profileData) {
   const { data: profile, error: profileError } = await supabase
     .from('player_profiles')
     .insert({
-      user_id: userId,
+      owner_user_id: userId,
       name,
       appearance: appearance ?? null,
       equipment: equipment ?? null,
@@ -111,28 +111,31 @@ export async function deleteCloudProfile(profileId) {
 
 function _playerToStatsRow(profileId, player) {
   return {
-    profile_id: profileId,
+    player_profile_id: profileId,
     points: player.points ?? 0,
     stars: player.stars ?? 0,
     golden_stars: player.goldenStars ?? 0,
     coins: player.coins ?? 0,
-    items: player.items ?? null,
-    by_difficulty: player._byDifficulty ?? null,
+    items: player.items ?? [],
+    by_difficulty: player._byDifficulty ?? {},
     rounds_played: player._roundsPlayed ?? 0,
     correct_answers: player._correctAnswers ?? 0,
-    week_bonus: player._weekBonus ?? null,
-    claimed_goals: player._claimedGoals ?? null,
-    character_name: player.character ?? null,
-    difficulty: player.difficulty ?? null,
+    week_bonus: player._weekBonus ?? {},
+    claimed_goals: player._claimedGoals ?? [],
+    character_name: player.character ?? 'Rookie',
+    difficulty: player.difficulty ?? 'leicht',
   }
 }
 
 export async function saveCloudStats(profileId, player) {
-  const row = _playerToStatsRow(profileId, player)
+  const row = {
+    ..._playerToStatsRow(profileId, player),
+    updated_at: new Date().toISOString(),
+  }
 
   const { data, error } = await supabase
     .from('stats')
-    .upsert(row, { onConflict: 'profile_id' })
+    .upsert(row, { onConflict: 'player_profile_id' })
     .select()
     .single()
 
@@ -148,14 +151,14 @@ export function cloudToLocalPlayer(stats) {
     stars: stats.stars ?? 0,
     goldenStars: stats.golden_stars ?? 0,
     coins: stats.coins ?? 0,
-    items: stats.items ?? {},
+    items: stats.items ?? [],
     _byDifficulty: stats.by_difficulty ?? {},
     _roundsPlayed: stats.rounds_played ?? 0,
     _correctAnswers: stats.correct_answers ?? 0,
-    _weekBonus: stats.week_bonus ?? null,
+    _weekBonus: stats.week_bonus ?? {},
     _claimedGoals: stats.claimed_goals ?? [],
-    character: stats.character_name ?? null,
-    difficulty: stats.difficulty ?? null,
+    character: stats.character_name ?? 'Rookie',
+    difficulty: stats.difficulty ?? 'leicht',
     _galaxieRefundV2: true,
   }
 }
@@ -168,11 +171,13 @@ export function cloudToLocalProfile(cloudProfile) {
   return {
     id: cloudProfile.id,
     cloudId: cloudProfile.id,
-    player: stats ? cloudToLocalPlayer(stats) : null,
+    player: stats
+      ? { ...cloudToLocalPlayer(stats), name: cloudProfile.name }
+      : { name: cloudProfile.name, character: 'Rookie', difficulty: 'leicht', points: 0, stars: 0, goldenStars: 0, coins: 0, items: [], _galaxieRefundV2: true },
     appearance: cloudProfile.appearance ?? null,
     equipment: cloudProfile.equipment ?? null,
     learned: null,
-    myCharacters: cloudProfile.my_characters ?? [],
+    myCharacters: cloudProfile.my_characters ?? null,
     activeCharIdx: cloudProfile.active_char_idx ?? 0,
   }
 }
@@ -196,7 +201,7 @@ export async function loadFriends(userId) {
   const { data, error } = await supabase
     .from('friends')
     .select(
-      '*, from_profile:users_profile!friends_from_user_id_fkey(display_name), to_profile:users_profile!friends_to_user_id_fkey(display_name)'
+      '*, from_profile:users_profile!friends_from_user_profile_fkey(display_name), to_profile:users_profile!friends_to_user_profile_fkey(display_name)'
     )
     .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`)
 
