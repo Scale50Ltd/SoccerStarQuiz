@@ -115,13 +115,19 @@ function AppInner() {
     return () => clearTimeout(timer)
   }, [auth.isOnline, cloudProfileId, player])
 
+  // Track if user has ever been online in this session (prevent false logout triggers)
+  const [wasOnline, setWasOnline] = useState(false)
+
   // Load cloud profiles when user logs in
   useEffect(() => {
     if (!auth.isOnline || !auth.user || cloudLoaded) return
+    setWasOnline(true)
 
     async function loadCloud() {
+      console.log('[CLOUD] Loading cloud data for', auth.user.id)
       try {
         const userProfile = await getOrCreateUserProfile(auth.user.id)
+        console.log('[CLOUD] User profile:', userProfile.display_name)
         setDisplayName(userProfile.display_name || '')
 
         if (!userProfile.display_name) {
@@ -129,65 +135,47 @@ function AppInner() {
         }
 
         let cloudProfiles = await loadCloudProfiles(auth.user.id)
+        console.log('[CLOUD] Cloud profiles found:', cloudProfiles.length)
 
-        // Self-heal: no cloud profiles → try to create one
+        // Self-heal: no cloud profiles → create a fresh one
         if (cloudProfiles.length === 0) {
-          // First try: upload local data if available
-          const localProfs = loadProfiles()
-          const hasLocalData = localProfs.length > 0 && localProfs[0].player &&
-            (localProfs[0].player.points > 0 || localProfs[0].player.coins > 0)
-
-          if (hasLocalData) {
-            try {
-              await createCloudProfile(auth.user.id, {
-                name: localProfs[0].player.name || userProfile.display_name || 'Spieler',
-                player: localProfs[0].player,
-                appearance: localProfs[0].appearance,
-                equipment: localProfs[0].equipment,
-                myCharacters: localProfs[0].myCharacters,
-                activeCharIdx: localProfs[0].activeCharIdx || 0,
-              })
-              cloudProfiles = await loadCloudProfiles(auth.user.id)
-            } catch (e) {
-              console.error('Local data upload failed:', e)
-            }
-          }
-
-          // Second try: create a fresh profile
-          if (cloudProfiles.length === 0) {
-            try {
-              const name = userProfile.display_name || 'Spieler'
-              await createCloudProfile(auth.user.id, {
-                name,
-                player: createNewProfile(name).player,
-              })
-              cloudProfiles = await loadCloudProfiles(auth.user.id)
-            } catch (e) {
-              console.error('Fresh profile creation failed:', e)
-            }
+          console.log('[CLOUD] No profiles, creating fresh one...')
+          try {
+            const name = userProfile.display_name || 'Spieler'
+            await createCloudProfile(auth.user.id, {
+              name,
+              player: createNewProfile(name).player,
+            })
+            cloudProfiles = await loadCloudProfiles(auth.user.id)
+            console.log('[CLOUD] After self-heal:', cloudProfiles.length, 'profiles')
+          } catch (e) {
+            console.error('[CLOUD] Self-heal failed:', e)
           }
         }
 
-        const localFormatProfiles = cloudProfiles.map(cloudToLocalProfile)
-        setProfiles(localFormatProfiles)
+        if (cloudProfiles.length > 0) {
+          const localFormatProfiles = cloudProfiles.map(cloudToLocalProfile)
+          setProfiles(localFormatProfiles)
 
-        if (localFormatProfiles.length > 0) {
           const first = localFormatProfiles[0]
+          console.log('[CLOUD] Activating profile:', first.id, first.player?.name)
           setActiveId(first.id)
           setCloudProfileId(first.cloudId || first.id)
 
-          // Merge: if local player has more points than cloud, keep local values
+          // Merge: if local player has more progress than cloud, keep local values
           const localPlayer = loadPlayer()
           const cloudPlayer = first.player
-          let bestPlayer = cloudPlayer
+          let bestPlayer = cloudPlayer || createNewProfile('Spieler').player
 
           if (localPlayer && cloudPlayer) {
             const localTotal = (localPlayer.points || 0) + (localPlayer.coins || 0)
             const cloudTotal = (cloudPlayer.points || 0) + (cloudPlayer.coins || 0)
             if (localTotal > cloudTotal) {
-              // Local data is ahead — use it and sync to cloud
               bestPlayer = { ...localPlayer, name: cloudPlayer.name || localPlayer.name }
-              saveCloudStats(first.cloudId || first.id, bestPlayer).catch(console.error)
+              console.log('[CLOUD] Local data ahead, syncing to cloud:', localTotal, '>', cloudTotal)
+              saveCloudStats(first.cloudId || first.id, bestPlayer).catch(err =>
+                console.error('[CLOUD] Merge sync failed:', err)
+              )
             }
           }
 
@@ -195,11 +183,12 @@ function AppInner() {
           activateProfile({ ...first, player: bestPlayer })
           setScreen('start')
         } else {
+          console.log('[CLOUD] Still no profiles after self-heal, showing profile select')
           setScreen('profileselect')
         }
         setCloudLoaded(true)
       } catch (err) {
-        console.error('Cloud load error:', err)
+        console.error('[CLOUD] Load error:', err)
         setCloudLoaded(true)
       }
     }
@@ -207,12 +196,15 @@ function AppInner() {
   }, [auth.isOnline, auth.user?.id, cloudLoaded])
 
   // Reset cloud state on logout → go back to login screen
+  // Only triggers if user was previously online (prevents false triggers on mount)
   useEffect(() => {
-    if (!auth.isOnline && cloudLoaded) {
+    if (!auth.isOnline && wasOnline) {
+      console.log('[CLOUD] Logout detected, resetting')
       setCloudLoaded(false)
       setCloudProfileId(null)
       setDisplayName('')
       setOfflineMode(false)
+      setWasOnline(false)
       setActiveId(null)
       setPlayer(null)
       setScreen('login')
