@@ -319,6 +319,10 @@ function AppInner() {
         _galaxieRefundV2: player?._galaxieRefundV2 || false,
       }
       setPlayer(newPlayer)
+      // Sync name to cloud profile
+      if (auth.isOnline && cloudProfileId) {
+        updateCloudProfile(cloudProfileId, { name }).catch(console.error)
+      }
       setScreen('quiz')
     }
   }
